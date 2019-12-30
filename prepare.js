@@ -1,23 +1,29 @@
 const inquirer = require('inquirer');
-const { execSync } = require('child_process');
+const {
+  execSync,
+  exec
+} = require('child_process');
 
 // Set your app versions here.
 var versions = [{
-    name: 'Your Paid App',
+    name: 'Your App',
     value: {
-      name: 'Your Paid App',
-      id: 'app.paid.your',
+      name: 'Your App',
+      id: 'app.your',
     }
-},
-{
-  name: 'Your Free App',
-  value: {
-    name: 'Your Free App',
-    id: 'app.free.your',
+  },
+  {
+    name: 'Your App (Free)',
+    value: {
+      name: 'Your App Free',
+      id: 'app.free.your',
+    }
   }
-}]
+]
 
 clearScreen()
+
+var currentVersion = getAppVersion()
 
 inquirer.prompt([{
   type: 'list',
@@ -25,84 +31,109 @@ inquirer.prompt([{
   message: 'Pick a version',
   choices: versions
 }, {
+  type: 'input',
+  name: 'ios_version',
+  message: 'Set the iOS App Version',
+  default: currentVersion.ios.version
+}, {
+  type: 'input',
+  name: 'android_version_name',
+  message: 'Set the Android App Version Name. This is the version name shown to users',
+  default: currentVersion.android.versionName
+}, {
+  type: 'input',
+  name: 'android_version_code',
+  message: 'Set the Android App Version Code. Must be incremented to prevent downgrading on app store',
+  default: currentVersion.android.versionCode
+}, {
   type: 'checkbox',
   name: 'commands',
   pageSize: 40,
   message: 'Select commands to run',
   choices: [{
-    name: '📥 Git Pull',
-    value: 'git_pull',
-    checked: true
-  },
-  {
-    name: '📦 Install Packages',
-    value: 'install_packages',
-    checked: true,
-  },
-  {
-    name: '📦 Update Packages',
-    value: 'update_packages',
-    checked: true,
-  },
-  new inquirer.Separator('Platform Removal'),
-  {
-    name: '🧹 Remove Android',
-    value: 'remove_android'
-  }, {
-    name: '🧹 Remove iOS',
-    value: 'remove_ios'
-  }, {
-    name: '🧹 Remove Electron',
-    value: 'remove_electron'
-  },
-  new inquirer.Separator('Platform Addition'),
-  {
-    name: '🔌 Initialize Capacitor',
-    value: 'cap_init'
-  },
-  {
-    name: '📦 Install Pods (iOS)',
-    value: 'install_pods'
-  },
-  {
-    name: '➕ Add Android',
-    value: 'add_android'
-  }, {
-    name: '➕ Add iOS',
-    value: 'add_ios'
-  }, {
-    name: '➕ Add Electron',
-    value: 'add_electron'
-  },
-  new inquirer.Separator('Code Building'),
-  {
-    name: '🔧 Build App',
-    value: 'build_app',
-    checked: true
-  }, {
-    name: '🔄 Copy files in ./etc to platforms',
-    value: 'copy_etc',
-    checked: true
-  }, {
-    name: '🔄 Sync Capacitor (update & copy)',
-    value: 'cap_sync',
-    checked: true
-  },
-new inquirer.Separator('IDE Launching'),
-{
-  name: '📱 Launch Android Studio',
-  value: 'open_android',
-  checked: true
-},
-{
-  name: '📱 Launch Xcode',
-  value: 'open_ios',
-},
-{
-  name: '📱 Launch Electron IDE',
-  value: 'open_electron',
-}
-]
+      name: '📥 Git Pull',
+      value: 'git_pull',
+      checked: true
+    },
+    {
+      name: '📦 Install Packages',
+      value: 'install_packages',
+      checked: true,
+    },
+    {
+      name: '📦 Update Packages',
+      value: 'update_packages',
+      checked: true,
+    },
+    new inquirer.Separator('Platform Removal'),
+    {
+      name: '🧹 Remove Android',
+      value: 'remove_android'
+    }, {
+      name: '🧹 Remove iOS',
+      value: 'remove_ios'
+    }, {
+      name: '🧹 Remove Electron',
+      value: 'remove_electron'
+    },
+    new inquirer.Separator('Platform Addition'),
+    {
+      name: '🔌 Initialize Capacitor',
+      value: 'cap_init'
+    },
+    {
+      name: '📦 Install Pods (iOS)',
+      value: 'install_pods'
+    },
+    {
+      name: '➕ Add Android',
+      value: 'add_android'
+    }, {
+      name: '➕ Add iOS',
+      value: 'add_ios'
+    }, {
+      name: '➕ Add Electron',
+      value: 'add_electron'
+    },
+    new inquirer.Separator('Code Building'),
+    {
+      name: '🔧 Build Vue.js App',
+      value: 'build_app',
+      checked: true
+    },
+    {
+      name: '➕ Set App Versions (iOS & Android)',
+      value: 'set_app_versions',
+      checked: true
+    },
+    {
+      name: '🔄 Copy files in ./etc to platforms',
+      value: 'copy_etc',
+      checked: true
+    }, {
+      name: '🔄 Sync Capacitor (update & copy)',
+      value: 'cap_sync',
+      checked: true
+    },
+    new inquirer.Separator('IDE Launching'),
+    {
+      name: '📱 Launch Android Studio',
+      value: 'open_android'
+    },
+    {
+      name: '📱 Launch Xcode',
+      value: 'open_ios',
+    },
+    {
+      name: '📱 Launch Electron IDE',
+      value: 'open_electron',
+    },
+    {
+      name: '📱 Install App on Android Device',
+      value: 'open_android_launch',
+      checked: true
+    }
+  ]
 }]).then((answers) => {
   runActions(answers)
 })
@@ -110,15 +141,15 @@ new inquirer.Separator('IDE Launching'),
 // Functions
 
 function addPlatform(platform = null) {
-  if(platform == null) {
+  if (platform == null) {
     addPlatform('ios')
     addPlatform('android')
     addPlatform('electron')
-  } else if(platform == 'ios') {
+  } else if (platform == 'ios') {
     execCommand('npx cap add ios', '➕ Adding iOS..')
-  } else if(platform == 'android') {
+  } else if (platform == 'android') {
     execCommand('npx cap add android', '➕ Adding Android..')
-  } else if(platform == 'electron') {
+  } else if (platform == 'electron') {
     execCommand('npx cap add electron', '➕ Adding Electron..')
   }
 }
@@ -149,11 +180,37 @@ function copyEtcFiles(package) {
 // Run a command and log a message to the screen.
 function execCommand(command, message, sync = true) {
   console.log(message)
-  if(sync) {
+  if (sync) {
     execSync(command)
   } else {
     exec(command)
   }
+}
+
+// Reads info.plist and build.gradle to find the versions
+function getAppVersion() {
+  const fs = require('fs')
+  try {
+    var ios = fs.readFileSync('./ios/App/App/info.plist', 'utf8')
+    var android = fs.readFileSync('./android/app/build.gradle', 'utf8')
+
+    var iosVersion = ios.match(/<key>CFBundleShortVersionString<\/key>\n\s+<string>(.*)<\/string>/m)[1]
+    var androidVersionCode = android.match(/versionCode (.*)/m)[1]
+    var androidVersionName = android.match(/versionName "(.*)"/m)[1]
+
+    return {
+      ios: {
+        version: iosVersion
+      },
+      android: {
+        versionName: androidVersionName,
+        versionCode: androidVersionCode
+      }
+    }
+  } catch (ex) {
+    console.error(ex)
+  }
+
 }
 
 function gitPull() {
@@ -169,17 +226,17 @@ function installPods() {
 }
 
 function openPlatform(platform, launch = false) {
-  if(launch == true) {
-    switch(platform) {
+  if (launch == true) {
+    switch (platform) {
       case 'android':
-        // Insert command here to launch on device
-      break;
+        execCommand(__dirname + '/android/gradlew app:installDebug -p ' + __dirname + '/android', '🔧 Installing Android app on default device..')
+        break;
       case 'ios':
         // Insert command here to launch on device
-      break;
+        break;
       case 'electron':
         // Insert command here to launch on device
-      break;
+        break;
     }
   } else {
     execCommand('npx cap open ' + platform, '📱 Opening ' + platform + ' in IDE..')
@@ -188,15 +245,15 @@ function openPlatform(platform, launch = false) {
 
 // Gets rid of an existing platform. If none is specified, all are removed
 function removePlatform(platform = null) {
-  if(platform == null) {
+  if (platform == null) {
     removePlatform('ios')
     removePlatform('android')
     removePlatform('electron')
-  } else if(platform == 'ios') {
+  } else if (platform == 'ios') {
     execCommand('rm -rf ios', '🧹 Removing existing iOS folder..')
-  } else if(platform == 'android') {
+  } else if (platform == 'android') {
     execCommand('rm -rf android', '🧹 Removing existing Android folder..')
-  } else if(platform == 'electron') {
+  } else if (platform == 'electron') {
     execCommand('rm -rf electron', '🧹 Removing existing Electron folder..')
   }
 }
@@ -204,77 +261,111 @@ function removePlatform(platform = null) {
 // This takes a set of answers from inquirer and runs the commands (in the order presented here)
 function runActions(actions) {
   actions.commands.forEach(function(action) {
-    switch(action) {
+    switch (action) {
       case 'git_pull':
         gitPull()
-      break;
+        break;
       case 'update_packages':
         updatePackages(false, true)
-      break;
+        break;
       case 'install_packages':
         updatePackages(true, false)
-      break;
+        break;
       case 'build_app':
         buildApp()
-      break;
+        break;
       case 'remove_android':
         removePlatform('android')
-      break;
+        break;
       case 'remove_ios':
         removePlatform('ios')
-      break;
+        break;
       case 'remove_electron':
         removePlatform('electron')
-      break;
+        break;
       case 'cap_init':
-        initCapacitor(answers.version.id, answers.version.name)
-      break;
+        initCapacitor(actions.version.id, actions.version.name)
+        break;
       case 'add_android':
         addPlatform('android')
-      break;
+        break;
       case 'add_ios':
         addPlatform('ios')
-      break;
+        break;
       case 'add_electron':
         addPlatform('electron')
-      break;
+        break;
+      case 'set_app_versions':
+        setAppVersions(actions.version.id, actions.ios_version, actions.android_version_code, actions.android_version_name)
+        break;
       case 'copy_etc':
-        copyEtcFiles(answers.version.id)
-      break;
+        copyEtcFiles(actions.version.id)
+        break;
       case 'cap_sync':
         capSync()
-      break;
+        break;
       case 'install_pods':
         installPods()
-      break;
+        break;
       case 'open_android':
         openPlatform('android')
-      break;
+        break;
       case 'open_ios':
         openPlatform('ios')
-      break;
+        break;
       case 'open_electron':
         openPlatform('electron')
-      break;
+        break;
       case 'open_android_launch':
         openPlatform('android', true)
-      break;
+        break;
       case 'open_ios_launch':
         openPlatform('ios', true)
-      break;
+        break;
       case 'open_electron_launch':
         openPlatform('electron', true)
-      break;
+        break;
     }
   })
 }
 
+function setAppVersions(package, newIosVersion, newAndroidCode, newAndroidName) {
+  const fs = require('fs')
+  try {
+    var plistFile = './etc/' + package + '/ios/App/App/info.plist'
+    var gradleFile = './etc/' + package + '/android/app/build.gradle'
+
+    var ios = fs.readFileSync(plistFile, 'utf8')
+    var android = fs.readFileSync(gradleFile, 'utf8')
+
+    var iosVersion = ios.replace(/(<key>CFBundleShortVersionString<\/key>\n\s+<string>)(.*)(<\/string>)/m, '$1' + newIosVersion + '$3')
+    var androidVersionCode = android.replace(/versionCode (.*)/m, 'versionCode ' + newAndroidCode)
+    var androidVersionName = androidVersionCode.replace(/versionName "(.*)"/m, 'versionName "' + newAndroidName + '"')
+
+    fs.writeFileSync(plistFile, iosVersion)
+    fs.writeFileSync(gradleFile, androidVersionName)
+
+    return {
+      ios: {
+        version: iosVersion
+      },
+      android: {
+        versionName: androidVersionName,
+        versionCode: androidVersionCode
+      }
+    }
+  } catch (ex) {
+    console.error(ex)
+  }
+
+}
+
 function updatePackages(install = true, update = true) {
-  if(install == true) {
+  if (install == true) {
     execCommand('npm install', '📦 Installing packages..')
   }
 
-  if(update == true) {
+  if (update == true) {
     execCommand('npm update', '📦 Updating packages..')
   }
 }
